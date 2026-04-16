@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                 String            @id @default(uuid())
+  email              String            @unique
+  password           String
+  role               Role              @default(SME)
+  kycStatus          Boolean           @default(false)
+  fraudScore         Float             @default(0.0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  emailNotifications Boolean           @default(true)
+  name               String?
+  companyName        String?
+  riskNotifications  Boolean           @default(true)
+  twoFactorEnabled   Boolean           @default(false)
+  paymentBlockedUntil DateTime?
+
+  // Invoices where this user is the SME (uploader)
+  uploadedInvoices   Invoice[]         @relation("SMEInvoices")
+
+  // Invoices where this user is the Corporate buyer obligated to pay
+  receivedInvoices   Invoice[]         @relation("CorporateInvoices")
+
+  investments        Investment[]
+  wallet             Wallet?
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  balance   Float    @default(0.0)
+  userId    String   @unique
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Invoice {
+  id               String            @id @default(uuid())
+  amount           Float
+  // buyerName for display only — actual corporate link via buyerId
+  buyerName        String
+  buyerId          String?           // FK to the onboarded Corporate User
+  dueDate          DateTime
+  status           InvoiceStatus     @default(PENDING_VERIFICATION)
+  smeId            String
+  acceptedById     String?
+  gstNumber        String?
+  imageUrl         String?           @db.Text
+  totalTokens      Int               @default(0)
+  availableTokens  Int               @default(0)
+  tokenPrice       Float             @default(100.0)
+  erpSynced        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  blockchainRecord BlockchainRecord?
+  investments      Investment[]
+  sme              User              @relation("SMEInvoices", fields: [smeId], references: [id])
+  corporateBuyer   User?             @relation("CorporateInvoices", fields: [buyerId], references: [id])
+  riskScore        RiskScore?
+}
+
+model CorporateInvite {
+  id          String   @id @default(uuid())
+  email       String
+  invitedBy   String   // userId of the SME who sent the invite
+  invoiceNote String?  // optional context the SME provides
+  accepted    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model RiskScore {
+  id        String   @id @default(uuid())
+  score     Int
+  category  String
+  invoiceId String   @unique
+  createdAt DateTime @default(now())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Investment {
+  id         String   @id @default(uuid())
+  amount     Float
+  share      Float
+  investorId String
+  invoiceId  String
+  createdAt  DateTime @default(now())
+  investor   User     @relation(fields: [investorId], references: [id])
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  type      String
+  amount    Float
+  status    String
+  userId    String?
+  utrNumber String?
+  proofUrl  String?
+  method    String?  // e.g. 'UPI', 'NEFT', 'RTGS'
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model BlockchainRecord {
+  id              String   @id @default(uuid())
+  contractAddress String
+  tokenId         String
+  invoiceId       String   @unique
+  createdAt       DateTime @default(now())
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model LiquidityPool {
+  id           String   @id @default(uuid())
+  poolName     String   @unique
+  totalBalance Float    @default(0.0)
+  apyTarget    Float    @default(10.0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum Role {
+  SME
+  INVESTOR
+  ADMIN
+  ENTERPRISE
+}
+
+enum InvoiceStatus {
+  PENDING_VERIFICATION
+  ACCEPTED
+  TOKENIZED
+  FUNDED
+  SETTLED
+}
