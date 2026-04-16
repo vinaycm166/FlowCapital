@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: flowcapital-backend
+    env: node
+    rootDir: flowcapital-backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+  - type: web
+    name: flowcapital-frontend
+    env: node
+    rootDir: flowcapital
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    dependencies:
+      - flowcapital-backend
+    envVars:
+      - key: BACKEND_API_URL
+        fromService:
+          type: web
+          name: flowcapital-backend
+          envVarKey: RENDER_EXTERNAL_URL
