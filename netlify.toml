@@ -1,0 +1,14 @@
+[build]
+  base = "flowcapital"
+  command = "npm install && npm run build && cd ../flowcapital-backend && npm install && npm run build"
+  publish = ".next"
+  functions = "../flowcapital-backend/dist"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server/:splat"
+  status = 200
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["tesseract.js", "sharp", "pdf-parse"]

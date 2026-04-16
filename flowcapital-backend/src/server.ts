@@ -5,13 +5,16 @@ import swaggerUi from 'swagger-ui-express';
 
 dotenv.config();
 
-import http from 'http';
-import { Server } from 'socket.io';
+import serverless from 'serverless-http';
 
 const app = express();
+/* WebSockets disabled for serverless Netlify compatibility
+import http from 'http';
+import { Server } from 'socket.io';
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 app.set('io', io);
+*/
 
 const PORT = process.env.PORT || 5000;
 
@@ -69,11 +72,17 @@ app.use('/api/defi', defiRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/reports', reportRoutes);
 
+/*
 io.on('connection', (socket) => {
   console.log('WS Client connected:', socket.id);
   socket.on('disconnect', () => console.log('WS Client disconnected:', socket.id));
 });
+*/
 
-server.listen(PORT, () => {
-  console.log(`FlowCapital Backend running on port ${PORT}`);
-});
+if (process.env.NETLIFY || process.env.LAMBDA_TASK_ROOT) {
+  module.exports.handler = serverless(app);
+} else {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
